@@ -33,6 +33,26 @@ PawPal+ includes four algorithmic features beyond basic task storage:
 | **Recurring task renewal** | `Scheduler.complete_task(task)` | Marks a task done and, if `is_recurring=True`, calls `Task.renew()` to produce a fresh uncompleted copy and re-registers it on the pet. The schedule is rebuilt automatically so the renewed task appears immediately. |
 | **Conflict detection** | `Scheduler.conflict_warnings()` | Compares time windows (start + duration in minutes) for all fixed-time pending tasks and returns human-readable warning strings for every overlap. Returns an empty list when no conflicts exist — never crashes. |
 
+## Testing PawPal+
+
+Run the full test suite with:
+
+```bash
+python -m pytest
+```
+
+The suite lives in `tests/test_pawpal.py` and covers **33 tests** across all four classes:
+
+| Area | What's tested |
+|---|---|
+| `Task` | Completion flag, priority score ordering, `is_fixed_time`, `summary` output, `renew` immutability |
+| `Pet` | Task stamping, count changes, priority sort order, `remove_task` happy/not-found paths, empty-pet edge case |
+| `Owner` | Task flattening across pets, `get_pet` miss, `remove_pet` |
+| `Scheduler` | Conflict detection (overlap, same-time, no-overlap), empty schedule, completed-task exclusion, `sort_by_time` ordering, `filter_tasks` by pet/status, recurring renewal, `conflict_warnings` format |
+
+**Confidence level: ★★★★☆**
+All happy paths and the main edge cases (no tasks, identical start times, non-recurring tasks, renewal immutability) are covered. Areas not yet tested: owner preferences affecting schedule order, multi-day recurrence windows, and UI-layer state management.
+
 ## Getting started
 
 ### Setup
