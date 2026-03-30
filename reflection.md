@@ -91,10 +91,14 @@ classDiagram
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+The scheduler considers two main constraints: **fixed start time** (hard constraint — an appointment at 10:00 cannot move) and **priority** (soft constraint — HIGH tasks are placed before LOW ones among flexible tasks). Fixed-time tasks take precedence because missing a scheduled appointment is worse than delaying a flexible walk. Priority breaks ties among flexible tasks where the owner has no stated preference.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+The conflict detector checks whether two tasks' **time windows overlap** (start + duration), but it does not attempt to reschedule one of the conflicting tasks — it only warns. This means a conflict surfaces as a message rather than an automatic fix. The tradeoff is that the scheduler stays simple and predictable: it never silently moves a task the user explicitly scheduled at a specific time. For a pet care app, surprising an owner by auto-moving a vet appointment could cause real problems, so surfacing a warning and letting the owner decide is the safer choice. The downside is that the schedule can include acknowledged conflicts; a future iteration could offer a "resolve" button that shifts the lower-priority task.
 
 ---
 

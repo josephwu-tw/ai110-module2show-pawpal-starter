@@ -22,6 +22,17 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Smarter Scheduling
+
+PawPal+ includes four algorithmic features beyond basic task storage:
+
+| Feature | Method | What it does |
+|---|---|---|
+| **Time-based sorting** | `Scheduler.sort_by_time()` | Orders all pending tasks chronologically — fixed-time tasks first (ascending by start time), then flexible tasks by priority score descending. Uses Python's `sorted()` with a `lambda` key on `time` objects. |
+| **Flexible filtering** | `Scheduler.filter_tasks(pet_name, completed)` | Filters the owner's task pool by pet name and/or completion status. Accepts `None` for either argument to skip that filter, making it composable. |
+| **Recurring task renewal** | `Scheduler.complete_task(task)` | Marks a task done and, if `is_recurring=True`, calls `Task.renew()` to produce a fresh uncompleted copy and re-registers it on the pet. The schedule is rebuilt automatically so the renewed task appears immediately. |
+| **Conflict detection** | `Scheduler.conflict_warnings()` | Compares time windows (start + duration in minutes) for all fixed-time pending tasks and returns human-readable warning strings for every overlap. Returns an empty list when no conflicts exist — never crashes. |
+
 ## Getting started
 
 ### Setup

@@ -98,6 +98,11 @@ class Task:
         """Mark this task as completed."""
         self.completed = True
 
+    def renew(self) -> "Task":
+        """Return a fresh, uncompleted copy of this task for the next recurrence."""
+        from dataclasses import replace
+        return replace(self, completed=False)
+
 
 # ---------------------------------------------------------------------------
 # Pet
@@ -250,8 +255,11 @@ class Scheduler:
         return conflicts
 
     def get_sorted_tasks(self) -> list[Task]:
-        """Return all owner tasks sorted: fixed-time first, then by priority score."""
-        all_tasks = self.owner.all_tasks()
+        """Return all pending owner tasks sorted: fixed-time first, then by priority score.
+
+        Completed tasks are excluded — they belong to history, not the plan.
+        """
+        all_tasks = [t for t in self.owner.all_tasks() if not t.completed]
         fixed = sorted(
             [t for t in all_tasks if t.is_fixed_time()],
             key=lambda t: t.scheduled_time,
@@ -295,3 +303,83 @@ class Scheduler:
             "by_priority": by_priority,
             "conflicts": conflicts,
         }
+
+    # ------------------------------------------------------------------
+    # Phase 4 — sorting, filtering, recurring tasks, conflict warnings
+    # ------------------------------------------------------------------
+
+    def sort_by_time(self) -> list[Task]:
+        """Return all owner tasks sorted by scheduled_time; flexible tasks go last.
+
+        Fixed-time tasks are sorted ascending by start time.
+        Flexible tasks are then appended sorted by priority score descending.
+        Uses a lambda key so time objects compare correctly with sorted().
+        """
+        all_tasks = [t for t in self.owner.all_tasks() if not t.completed]
+        fixed = sorted(
+            [t for t in all_tasks if t.is_fixed_time()],
+            key=lambda t: t.scheduled_time,  # time objects support < comparison
+        )
+        flexible = sorted(
+            [t for t in all_tasks if not t.is_fixed_time()],
+            key=lambda t: t.priority_score(),
+            reverse=True,
+        )
+        return fixed + flexible
+
+    def filter_tasks(
+        self,
+        pet_name: Optional[str] = None,
+        completed: Optional[bool] = None,
+    ) -> list[Task]:
+        """Return tasks filtered by pet name and/or completion status.
+
+        Parameters
+        ----------
+        pet_name  : if given, only include tasks whose pet_name matches
+        completed : if True return only completed tasks; if False only pending;
+                    if None return all
+        """
+        tasks = self.owner.all_tasks()
+        if pet_name is not None:
+            tasks = [t for t in tasks if t.pet_name == pet_name]
+        if completed is not None:
+            tasks = [t for t in tasks if t.completed == completed]
+        return tasks
+
+    def complete_task(self, task: Task) -> Optional[Task]:
+        """Mark a task complete and, if recurring, register a fresh copy on its pet.
+
+        Returns the renewed Task if one was created, otherwise None.
+        Uses timedelta-style semantics: the renewal is a new Task instance
+        with completed=False, representing the next daily occurrence.
+        """
+        task.mark_complete()
+        if not task.is_recurring:
+            return None
+        renewed = task.renew()
+        pet = self.owner.get_pet(task.pet_name)
+        if pet is not None:
+            pet.add_task(renewed)
+        # Rebuild schedule so the renewed task appears
+        self.build_schedule()
+        return renewed
+
+    def conflict_warnings(self) -> list[str]:
+        """Return human-readable warning strings for every detected time conflict.
+
+        Returns an empty list when no conflicts exist, so callers can safely
+        print or log the result without crashing.
+        """
+        all_tasks = [t for t in self.owner.all_tasks() if not t.completed]
+        pairs = self.detect_conflicts(all_tasks)
+        warnings = []
+        for a, b in pairs:
+            a_time = a.scheduled_time.strftime("%H:%M")
+            b_time = b.scheduled_time.strftime("%H:%M")
+            warnings.append(
+                f"⚠ CONFLICT: '{a.title}' ({a.pet_name}, {a_time}, "
+                f"{a.duration_minutes} min) overlaps with "
+                f"'{b.title}' ({b.pet_name}, {b_time}, {b.duration_minutes} min)"
+            )
+        return warnings
