@@ -7,6 +7,76 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+Three core user actions I identified:
+1. Add a pet and assign daily care tasks to it.
+2. Schedule a day — generate a prioritized, conflict-free plan of tasks.
+3. View today's schedule with an explanation of why each task is placed when it is.
+
+Classes and their responsibilities:
+
+| Class | Responsibilities |
+|---|---|
+| `Task` | Holds all data about a single care action (title, type, duration, priority, optional fixed start time). Knows how to compute its own priority score and produce a one-line summary. |
+| `Pet` | Owns a list of Tasks. Provides helpers to filter/sort tasks by priority or type. Stamps each added task with the pet's name. |
+| `Owner` | Manages a list of Pets and stores preferences (e.g. preferred walk time). Aggregates all tasks across pets for the scheduler. |
+| `Scheduler` | Takes an Owner, collects all tasks, sorts them (fixed-time tasks first, then by priority), detects overlapping time windows, and produces an annotated daily plan with explanations. |
+
+UML diagram (Mermaid.js):
+
+```mermaid
+classDiagram
+    class Owner {
+        +str name
+        +str email
+        +list~Pet~ pets
+        +dict preferences
+        +add_pet(pet)
+        +remove_pet(pet_name)
+        +get_pet(pet_name)
+        +all_tasks()
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +str breed
+        +float age
+        +list~Task~ tasks
+        +add_task(task)
+        +remove_task(title)
+        +get_tasks_by_priority()
+        +get_tasks_by_type(task_type)
+    }
+
+    class Task {
+        +str title
+        +TaskType task_type
+        +int duration_minutes
+        +Priority priority
+        +time scheduled_time
+        +str pet_name
+        +bool is_recurring
+        +str notes
+        +priority_score()
+        +is_fixed_time()
+        +summary()
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list~Task~ _schedule
+        +build_schedule()
+        +detect_conflicts(tasks)
+        +get_sorted_tasks()
+        +explain_plan()
+        +daily_summary()
+    }
+
+    Owner "1" --> "0..*" Pet : manages
+    Pet "1" --> "0..*" Task : owns
+    Scheduler "1" --> "1" Owner : plans for
+```
+
 **b. Design changes**
 
 - Did your design change during implementation?
